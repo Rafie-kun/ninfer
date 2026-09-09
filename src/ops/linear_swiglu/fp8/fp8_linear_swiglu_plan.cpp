@@ -51,6 +51,13 @@ std::size_t fp8_linear_swiglu_workspace_capacity_bytes(LinearPolicy policy, std:
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("fp8 linear_swiglu workspace: invalid token interval");
     }
+#ifdef NINFER_DISABLE_FP8_MMA
+    if (policy != LinearPolicy::A16Only) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A8 linear_swiglu is not supported in this build; use A16Only");
+    }
+    return 0;
+#else
     (void)resolve_route(policy, min_tokens);
     (void)resolve_route(policy, max_tokens);
     const bool interval_uses_a8 =
@@ -58,16 +65,26 @@ std::size_t fp8_linear_swiglu_workspace_capacity_bytes(LinearPolicy policy, std:
     return interval_uses_a8
                ? fp8_a8_workspace_capacity_bytes(max_tokens, Fp8MlpGateUpGeometry::kInputRows)
                : 0;
+#endif
 }
 
 void fp8_linear_swiglu_dispatch(const Tensor& x, const Weight& weight, Tensor& out,
                                 LinearPolicy policy, WorkspaceArena& workspace,
                                 cudaStream_t stream) {
+#ifdef NINFER_DISABLE_FP8_MMA
+    if (policy != LinearPolicy::A16Only) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A8 linear_swiglu is not supported in this build; use A16Only");
+    }
+    launch_a16(x, weight, out, stream);
+    (void)workspace;
+#else
     if (resolve_route(policy, x.ne[1]) == Fp8LinearSwiGluRoute::A16) {
         launch_a16(x, weight, out, stream);
         return;
     }
     fp8_linear_swiglu_a8_launch(x, weight, out, workspace, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail

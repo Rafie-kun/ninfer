@@ -198,8 +198,13 @@ void execute(const Tensor& hidden, const Weight& head, const Tensor* id_map, Ten
             detail::linear_topk_w8_launch(x, head, detail::kLinearTopKFullValidRows, scratch,
                                           stream);
         else if (profile == HeadProfile::Fp8Full)
+#ifdef NINFER_DISABLE_FP8_MMA
+            throw std::invalid_argument(
+                "Ampere fork: FP8 topk head is not supported in this build; use W8 or Q4 heads");
+#else
             detail::linear_topk_fp8_launch(x, head, detail::kLinearTopKFullValidRows, scratch,
                                            stream);
+#endif
         else
             detail::linear_topk_q4_launch(x, head, *id_map, scratch, stream);
         detail::linear_topk_merge_launch(scratch, out_ids, out_scores, stream);

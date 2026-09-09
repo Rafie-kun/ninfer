@@ -374,22 +374,37 @@ void causal_attention_small_t_launch(
     CausalAttentionExecutionEnvelope envelope, std::int32_t column_begin, std::int32_t width,
     Tensor& partial_acc, Tensor& partial_m, Tensor& partial_l, Tensor& out, cudaStream_t stream) {
     if (cache.storage == KvCacheStorage::Fp8KeyNvfp4Value) {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: K8V4 KV attention is not supported in this build; use bf16 or int8");
+#else
         causal_attention_small_t_k8v4_launch(q, k, v, pos, valid_columns, table_rows, scale, cache,
                                              envelope, column_begin, width, partial_acc, partial_m,
                                              partial_l, out, stream);
         return;
+#endif
     }
     if (cache.storage == KvCacheStorage::Fp8E4M3Row256) {
+#ifdef NINFER_DISABLE_FP8_MMA
+        throw std::invalid_argument(
+            "Ampere fork: FP8 KV attention is not supported in this build; use bf16 or int8");
+#else
         causal_attention_small_t_fp8_launch(q, k, v, pos, valid_columns, table_rows, scale, cache,
                                             envelope, column_begin, width, partial_acc, partial_m,
                                             partial_l, out, stream);
         return;
+#endif
     }
     if (cache.storage == KvCacheStorage::Nvfp4Group16) {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: NVFP4 KV attention is not supported in this build; use bf16 or int8");
+#else
         causal_attention_small_t_nvfp4_launch(q, k, v, pos, valid_columns, table_rows, scale, cache,
                                               envelope, column_begin, width, partial_acc, partial_m,
                                               partial_l, out, stream);
         return;
+#endif
     }
     const CausalAppendInput input{static_cast<const __nv_bfloat16*>(k.data),
                                   static_cast<const __nv_bfloat16*>(v.data)};
@@ -418,19 +433,34 @@ void causal_attention_cached_small_t_launch(const Tensor& q, const Tensor& pos, 
                                             Tensor& partial_acc, Tensor& partial_m,
                                             Tensor& partial_l, Tensor& out, cudaStream_t stream) {
     if (cache.storage == KvCacheStorage::Fp8KeyNvfp4Value) {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: K8V4 KV attention is not supported in this build; use bf16 or int8");
+#else
         causal_attention_cached_small_t_k8v4_launch(q, pos, scale, cache, envelope, partial_acc,
                                                     partial_m, partial_l, out, stream);
         return;
+#endif
     }
     if (cache.storage == KvCacheStorage::Fp8E4M3Row256) {
+#ifdef NINFER_DISABLE_FP8_MMA
+        throw std::invalid_argument(
+            "Ampere fork: FP8 KV attention is not supported in this build; use bf16 or int8");
+#else
         causal_attention_cached_small_t_fp8_launch(q, pos, scale, cache, envelope, partial_acc,
                                                    partial_m, partial_l, out, stream);
         return;
+#endif
     }
     if (cache.storage == KvCacheStorage::Nvfp4Group16) {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: NVFP4 KV attention is not supported in this build; use bf16 or int8");
+#else
         causal_attention_cached_small_t_nvfp4_launch(q, pos, scale, cache, envelope, partial_acc,
                                                      partial_m, partial_l, out, stream);
         return;
+#endif
     }
     const CausalCachedInput input{};
     const CausalSmallTInvocation invocation{

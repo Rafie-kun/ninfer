@@ -9,6 +9,8 @@
 namespace ninfer::ops::detail {
 namespace {
 
+#ifndef NINFER_DISABLE_NVFP4
+
 enum class Nvfp4GdnInputRoute : std::uint8_t {
     A16,
     W4A4,
@@ -46,10 +48,18 @@ void launch_a16(const Tensor& x, const Weight& weight, Tensor& qkv, Tensor& z,
     }
 }
 
+#endif
 } // namespace
 
 std::size_t nvfp4_gdn_input_workspace_capacity_bytes(LinearPolicy policy, std::int32_t min_tokens,
                                                      std::int32_t max_tokens) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)policy;
+    (void)min_tokens;
+    (void)max_tokens;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 gdn_input_proj is not supported in this build; use groupwise-int");
+#else
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("nvfp4 gdn_input_proj workspace: invalid token interval");
     }
@@ -57,10 +67,22 @@ std::size_t nvfp4_gdn_input_workspace_capacity_bytes(LinearPolicy policy, std::i
     return resolve_route(policy, max_tokens) == Nvfp4GdnInputRoute::W4A4
                ? nvfp4_w4a4_workspace_capacity_bytes(max_tokens, Nvfp4GdnInputGeometry::kInputRows)
                : 0;
+#endif
 }
 
 void nvfp4_gdn_input_dispatch(const Tensor& x, const Weight& weight, Tensor& qkv, Tensor& z,
                               LinearPolicy policy, WorkspaceArena* workspace, cudaStream_t stream) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)x;
+    (void)weight;
+    (void)qkv;
+    (void)z;
+    (void)policy;
+    (void)workspace;
+    (void)stream;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 gdn_input_proj is not supported in this build; use groupwise-int");
+#else
     if (resolve_route(policy, x.ne[1]) == Nvfp4GdnInputRoute::A16) {
         launch_a16(x, weight, qkv, z, stream);
         return;
@@ -71,6 +93,7 @@ void nvfp4_gdn_input_dispatch(const Tensor& x, const Weight& weight, Tensor& qkv
     auto scope                       = workspace->scope();
     const Nvfp4W4a4Workspace scratch = allocate_nvfp4_w4a4_workspace(*workspace, x.ne[1], weight.k);
     nvfp4_gdn_input_w4a4_launch(x, weight, qkv, z, scratch, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail

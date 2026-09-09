@@ -8,6 +8,8 @@
 namespace ninfer::ops::detail {
 namespace {
 
+#ifndef NINFER_DISABLE_NVFP4
+
 struct Nvfp4GdnProjectedWorkspace {
     Tensor projected;
     DeviceSpan projection;
@@ -23,10 +25,18 @@ Nvfp4GdnProjectedWorkspace allocate_workspace(Allocator& allocator, std::int32_t
     return out;
 }
 
+#endif
 } // namespace
 
 Nvfp4GdnConvPlan nvfp4_gdn_conv_resolve_plan(LinearPolicy policy, std::int32_t tokens,
                                              std::int32_t batch_size) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)policy;
+    (void)tokens;
+    (void)batch_size;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 gdn conv is not supported in this build; use groupwise-int");
+#else
     if (tokens <= 0 || batch_size <= 0 || batch_size > 8) {
         throw std::invalid_argument("nvfp4 gdn conv: invalid B/T domain");
     }
@@ -42,11 +52,19 @@ Nvfp4GdnConvPlan nvfp4_gdn_conv_resolve_plan(LinearPolicy policy, std::int32_t t
     if (tokens == 1) { return {Nvfp4GdnConvScheduleId::DecodeFusedA16}; }
     if (tokens <= 3) { return {Nvfp4GdnConvScheduleId::SmallTFusedA16}; }
     return {Nvfp4GdnConvScheduleId::Materialized};
+#endif
 }
 
 std::size_t nvfp4_gdn_snapshot_workspace_capacity_bytes(LinearPolicy policy,
                                                         std::int32_t min_tokens,
                                                         std::int32_t max_tokens) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)policy;
+    (void)min_tokens;
+    (void)max_tokens;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 gdn snapshot is not supported in this build; use groupwise-int");
+#else
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("nvfp4 gdn snapshot workspace: invalid token interval");
     }
@@ -57,6 +75,7 @@ std::size_t nvfp4_gdn_snapshot_workspace_capacity_bytes(LinearPolicy policy,
     WorkspaceLayoutBuilder layout;
     (void)allocate_workspace(layout, max_tokens);
     return layout.peak_bytes(1);
+#endif
 }
 
 void nvfp4_gdn_snapshot_dispatch(const Tensor& x, const Weight& weight, const Tensor& conv_weight,
@@ -65,6 +84,24 @@ void nvfp4_gdn_snapshot_dispatch(const Tensor& x, const Weight& weight, const Te
                                  Tensor& query, Tensor& key, Tensor& value, Tensor& z,
                                  LinearPolicy policy, WorkspaceArena& workspace,
                                  cudaStream_t stream) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)x;
+    (void)weight;
+    (void)conv_weight;
+    (void)conv_states;
+    (void)valid_columns;
+    (void)initial_slot;
+    (void)snapshot_base_slot;
+    (void)query;
+    (void)key;
+    (void)value;
+    (void)z;
+    (void)policy;
+    (void)workspace;
+    (void)stream;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 gdn snapshot is not supported in this build; use groupwise-int");
+#else
     switch (nvfp4_gdn_conv_resolve_plan(policy, x.ne[1], 1).schedule) {
     case Nvfp4GdnConvScheduleId::DecodeFusedA16:
         nvfp4_gdn_snapshot_decode_launch(x, weight, conv_weight, conv_states, valid_columns,
@@ -87,6 +124,7 @@ void nvfp4_gdn_snapshot_dispatch(const Tensor& x, const Weight& weight, const Te
                              &projection_workspace, stream);
     nvfp4_gdn_snapshot_post_launch(scratch.projected, conv_weight, conv_states, valid_columns,
                                    initial_slot, snapshot_base_slot, query, key, value, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail

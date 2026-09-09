@@ -199,9 +199,19 @@ void kv_cache_append(const Tensor& k, const Tensor& v, const Tensor& positions,
         throw std::invalid_argument("kv_cache_append: T exceeds cache capacity");
     }
     if (cache.storage == KvCacheStorage::Fp8KeyNvfp4Value) {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: K8V4 KV append is not supported in this build; use bf16 or int8");
+#else
         detail::kv_cache_append_k8v4_launch(k, v, positions, cache, stream);
+#endif
     } else if (cache.storage == KvCacheStorage::Nvfp4Group16) {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: NVFP4 KV append is not supported in this build; use bf16 or int8");
+#else
         detail::kv_cache_append_nvfp4_launch(k, v, positions, cache, stream);
+#endif
     } else {
         detail::kv_cache_append_launch(k, v, positions, cache, stream);
     }

@@ -101,6 +101,7 @@ set(NINFER_OPS_FP8_MMA_SOURCES
   ops/attn_input_proj/fp8/fp8_attn_input_a16_gemm.cu
   ops/attn_input_proj/fp8/fp8_attn_input_a8.cu
   ops/gdn_input_proj/fp8/fp8_gdn_input_a8.cu
+  ops/gdn_input_proj/fp8/fp8_gdn_input_matrix.cu
   ops/linear/fp8/fp8_a16_small_t_mma.cu
   ops/linear/fp8/fp8_a16_gemm_mma.cu
   ops/linear/fp8/fp8_a8.cu
@@ -188,7 +189,6 @@ add_library(ninfer_ops STATIC
   ops/attn_input_proj/w8/w8_dflash2_attn_input.cu
   ops/attn_input_proj/w8/w8_attn_input_plan.cpp
   ops/gdn_input_proj/fp8/fp8_gdn_input_decode.cu
-  ops/gdn_input_proj/fp8/fp8_gdn_input_matrix.cu
   ops/gdn_input_proj/fp8/fp8_gdn_input_plan.cpp
   ops/gdn_input_proj/fp8/fp8_gdn_conv_fused.cu
   ops/gdn_input_proj/fp8/fp8_gdn_conv_plan.cpp

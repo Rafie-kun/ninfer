@@ -9,6 +9,8 @@
 namespace ninfer::ops::detail {
 namespace {
 
+#ifndef NINFER_DISABLE_NVFP4
+
 enum class Nvfp4LinearAddRoute : std::uint8_t {
     A16,
     W4A4,
@@ -45,12 +47,22 @@ void launch_a16(const Tensor& x, const Weight& weight, Tensor& residual, cudaStr
     }
 }
 
+#endif
 } // namespace
 
 std::size_t nvfp4_linear_add_workspace_capacity_bytes(std::int32_t output_rows,
                                                       std::int32_t input_rows, LinearPolicy policy,
                                                       std::int32_t min_tokens,
                                                       std::int32_t max_tokens) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)output_rows;
+    (void)input_rows;
+    (void)policy;
+    (void)min_tokens;
+    (void)max_tokens;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 linear_add is not supported in this build; use groupwise-int");
+#else
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("nvfp4 linear_add workspace: invalid token interval");
     }
@@ -58,11 +70,22 @@ std::size_t nvfp4_linear_add_workspace_capacity_bytes(std::int32_t output_rows,
     return resolve_route(output_rows, input_rows, policy, max_tokens) == Nvfp4LinearAddRoute::W4A4
                ? nvfp4_w4a4_workspace_capacity_bytes(max_tokens, input_rows)
                : 0;
+#endif
 }
 
 void nvfp4_linear_add_dispatch(const Tensor& x, const Weight& weight, Tensor& residual,
                                LinearPolicy policy, WorkspaceArena& workspace,
                                cudaStream_t stream) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)x;
+    (void)weight;
+    (void)residual;
+    (void)policy;
+    (void)workspace;
+    (void)stream;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 linear_add is not supported in this build; use groupwise-int");
+#else
     if (resolve_route(weight.n, weight.k, policy, x.ne[1]) == Nvfp4LinearAddRoute::A16) {
         launch_a16(x, weight, residual, stream);
         return;
@@ -70,6 +93,7 @@ void nvfp4_linear_add_dispatch(const Tensor& x, const Weight& weight, Tensor& re
     auto scope                       = workspace.scope();
     const Nvfp4W4a4Workspace scratch = allocate_nvfp4_w4a4_workspace(workspace, x.ne[1], weight.k);
     nvfp4_linear_add_w4a4_launch(x, weight, residual, scratch, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail

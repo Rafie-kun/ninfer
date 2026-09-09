@@ -619,16 +619,26 @@ void dispatch_single_parent_record(const Tensor& x, const Weight& weight, const 
             return;
         }
         if (plan.schedule == detail::Nvfp4GdnConvScheduleId::SmallTFusedA16) {
+#ifdef NINFER_DISABLE_NVFP4
+            throw std::invalid_argument(
+                "Ampere fork: NVFP4 gdn conv record is not supported in this build");
+#else
             detail::nvfp4_gdn_record_small_t_launch(x, weight, conv_weight, conv_states,
                                                     valid_columns, initial_state_slots, conv_record,
                                                     query, key, value, z, stream);
             return;
+#endif
         }
 
         auto scope = workspace.scope();
         gdn_input_proj(x, weight, conv_record, z, policy, workspace, stream);
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: NVFP4 gdn conv record is not supported in this build");
+#else
         detail::nvfp4_gdn_record_post_launch(conv_record, conv_weight, conv_states, valid_columns,
                                              initial_state_slots, query, key, value, stream);
+#endif
         return;
     }
 

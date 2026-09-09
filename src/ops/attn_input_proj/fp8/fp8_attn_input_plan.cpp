@@ -29,10 +29,16 @@ void launch_a16(const Tensor& x, const Weight& weight, Tensor& q, Tensor& gate, 
         fp8_attn_input_decode_launch(x, weight, q, gate, k, v, stream);
     else if (x.ne[1] <= kFp8AttnInputLastSimtT)
         fp8_attn_input_small_t_launch(x, weight, q, gate, k, v, stream);
+#ifdef NINFER_DISABLE_FP8_MMA
+    else
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A16-MMA attn_input_proj is not supported in this build");
+#else
     else if (x.ne[1] <= kFp8AttnInputLastSmallMmaT)
         fp8_attn_input_a16_small_mma_launch(x, weight, q, gate, k, v, stream);
     else
         fp8_attn_input_a16_gemm_launch(x, weight, q, gate, k, v, stream);
+#endif
 }
 
 } // namespace
@@ -42,15 +48,31 @@ std::size_t fp8_attn_input_workspace_capacity_bytes(LinearPolicy policy, std::in
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("fp8 attn_input_proj workspace: invalid token interval");
     }
+#ifdef NINFER_DISABLE_FP8_MMA
+    if (policy != LinearPolicy::A16Only) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A8 attn_input_proj is not supported in this build; use A16Only");
+    }
+    return 0;
+#else
     (void)resolve_route(policy, min_tokens);
     return resolve_route(policy, max_tokens) == Fp8AttnInputRoute::A8
                ? fp8_a8_workspace_capacity_bytes(max_tokens, Fp8AttnInputGeometry::kInputRows)
                : 0;
+#endif
 }
 
 void fp8_attn_input_dispatch(const Tensor& x, const Weight& weight, Tensor& q, Tensor& gate,
                              Tensor& k, Tensor& v, LinearPolicy policy, WorkspaceArena* workspace,
                              cudaStream_t stream) {
+#ifdef NINFER_DISABLE_FP8_MMA
+    if (policy != LinearPolicy::A16Only) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A8 attn_input_proj is not supported in this build; use A16Only");
+    }
+    launch_a16(x, weight, q, gate, k, v, stream);
+    (void)workspace;
+#else
     if (resolve_route(policy, x.ne[1]) == Fp8AttnInputRoute::A16) {
         launch_a16(x, weight, q, gate, k, v, stream);
         return;
@@ -61,6 +83,7 @@ void fp8_attn_input_dispatch(const Tensor& x, const Weight& weight, Tensor& q, T
     auto scope                   = workspace->scope();
     const Fp8A8Workspace scratch = allocate_fp8_a8_workspace(*workspace, x.ne[1], weight.k);
     fp8_attn_input_a8_launch(x, weight, q, gate, k, v, scratch, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail

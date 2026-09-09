@@ -52,12 +52,21 @@ Fp8LinearRoute resolve_route(std::int32_t output_rows, std::int32_t input_rows, 
 
 void launch_a16(const Tensor& x, const Weight& weight, Tensor& out, cudaStream_t stream) {
     const Fp8Problem problem = resolve_fp8_problem(weight.n, weight.k);
+#ifdef NINFER_DISABLE_FP8_MMA
+    // Ampere fork: FP8 vocabulary A16-MMA kernels are compiled out; only the generic
+    // SIMT decode/small-T path below stays available.
+    if (problem == Fp8Problem::Vocabulary) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 vocabulary head is not supported in this build");
+    }
+#else
     if (problem == Fp8Problem::Vocabulary && x.ne[1] >= kFp8VocabularyFirstA16GemmT) {
         launch_fp8_vocabulary_a16_gemm(x, weight, out, stream);
         return;
     }
+#endif
     const std::int32_t chunk = problem == Fp8Problem::Vocabulary ? kFp8VocabularyLastA16SmallTMmaT
-                                                                 : fp8_linear_small_t_max(problem);
+                                                                  : fp8_linear_small_t_max(problem);
     for (std::int32_t token_begin = 0; token_begin < x.ne[1]; token_begin += chunk) {
         const std::int32_t active = std::min(chunk, x.ne[1] - token_begin);
         auto* input               = static_cast<std::uint8_t*>(x.data) +
@@ -67,7 +76,12 @@ void launch_a16(const Tensor& x, const Weight& weight, Tensor& out, cudaStream_t
         Tensor input_chunk(input, DType::BF16, {weight.k, active});
         Tensor output_chunk(output, DType::BF16, {weight.n, active});
         if (problem == Fp8Problem::Vocabulary) {
+#ifdef NINFER_DISABLE_FP8_MMA
+            throw std::invalid_argument(
+                "Ampere fork: FP8 vocabulary head is not supported in this build");
+#else
             launch_fp8_vocabulary_a16_small_t(input_chunk, weight, output_chunk, stream);
+#endif
         } else if (active == 1) {
             launch_fp8_decode(input_chunk, weight, output_chunk, stream);
         } else {

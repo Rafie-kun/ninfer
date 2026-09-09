@@ -1,7 +1,9 @@
 #include "ops/attn_input_proj/nvfp4/nvfp4_attn_input_plan.h"
 
 #include "ops/linear/nvfp4/nvfp4_config.h"
+#ifndef NINFER_DISABLE_NVFP4
 #include "ops/linear/nvfp4/nvfp4_w4a4_plan.h"
+#endif
 
 #include <algorithm>
 #include <cstdint>
@@ -9,6 +11,8 @@
 
 namespace ninfer::ops::detail {
 namespace {
+
+#ifndef NINFER_DISABLE_NVFP4
 
 enum class Nvfp4AttnInputRoute : std::uint8_t {
     A16,
@@ -56,10 +60,18 @@ void launch_a16(const Tensor& x, const Weight& weight, Tensor& q, Tensor& gate, 
     }
 }
 
+#endif
 } // namespace
 
 std::size_t nvfp4_attn_input_workspace_capacity_bytes(LinearPolicy policy, std::int32_t min_tokens,
                                                       std::int32_t max_tokens) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)policy;
+    (void)min_tokens;
+    (void)max_tokens;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 attn_input_proj is not supported in this build; use groupwise-int");
+#else
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("nvfp4 attn_input_proj workspace: invalid token interval");
     }
@@ -67,11 +79,25 @@ std::size_t nvfp4_attn_input_workspace_capacity_bytes(LinearPolicy policy, std::
     return resolve_route(policy, max_tokens) == Nvfp4AttnInputRoute::W4A4
                ? nvfp4_w4a4_workspace_capacity_bytes(max_tokens, Nvfp4AttnInputGeometry::kInputRows)
                : 0;
+#endif
 }
 
 void nvfp4_attn_input_dispatch(const Tensor& x, const Weight& weight, Tensor& q, Tensor& gate,
                                Tensor& k, Tensor& v, LinearPolicy policy, WorkspaceArena* workspace,
                                cudaStream_t stream) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)x;
+    (void)weight;
+    (void)q;
+    (void)gate;
+    (void)k;
+    (void)v;
+    (void)policy;
+    (void)workspace;
+    (void)stream;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 attn_input_proj is not supported in this build; use groupwise-int");
+#else
     if (resolve_route(policy, x.ne[1]) == Nvfp4AttnInputRoute::A16) {
         launch_a16(x, weight, q, gate, k, v, stream);
         return;
@@ -82,6 +108,7 @@ void nvfp4_attn_input_dispatch(const Tensor& x, const Weight& weight, Tensor& q,
     auto scope                       = workspace->scope();
     const Nvfp4W4a4Workspace scratch = allocate_nvfp4_w4a4_workspace(*workspace, x.ne[1], weight.k);
     nvfp4_attn_input_w4a4_launch(x, weight, q, gate, k, v, scratch, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail

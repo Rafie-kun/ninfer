@@ -57,20 +57,39 @@ std::size_t fp8_linear_add_workspace_capacity_bytes(std::int32_t output_rows,
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("fp8 linear_add workspace: invalid token interval");
     }
+#ifdef NINFER_DISABLE_FP8_MMA
+    if (policy != LinearPolicy::A16Only) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A8 linear_add is not supported in this build; use A16Only");
+    }
+    (void)output_rows;
+    (void)input_rows;
+    return 0;
+#else
     (void)resolve_route(output_rows, input_rows, policy, min_tokens);
     return resolve_route(output_rows, input_rows, policy, max_tokens) == Fp8LinearAddRoute::A8
                ? fp8_a8_workspace_capacity_bytes(max_tokens, input_rows)
                : 0;
+#endif
 }
 
 void fp8_linear_add_dispatch(const Tensor& x, const Weight& weight, Tensor& residual,
                              LinearPolicy policy, WorkspaceArena& workspace, cudaStream_t stream) {
+#ifdef NINFER_DISABLE_FP8_MMA
+    if (policy != LinearPolicy::A16Only) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A8 linear_add is not supported in this build; use A16Only");
+    }
+    launch_a16(x, weight, residual, stream);
+    (void)workspace;
+#else
     const Fp8LinearAddRoute route = resolve_route(weight.n, weight.k, policy, x.ne[1]);
     if (route == Fp8LinearAddRoute::A16) {
         launch_a16(x, weight, residual, stream);
         return;
     }
     fp8_linear_add_a8_launch(x, weight, residual, workspace, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail
