@@ -12,6 +12,7 @@ run the CLI or HTTP server.
 | [Performance](performance.md) | RTX 5090 measurement coverage, per-model serving results, methodology, and publication rules |
 | [Perplexity](perplexity.md) | fixed-corpus and custom-text causal perplexity, comparison rules, progress, and reports |
 | [CLI examples](../examples/cli/) | committed text, multimodal, thinking, long-decode, and long-context inputs |
+| [Ampere fork](ampere-fork.md) | experimental RTX 3060 / 3060 Ti (sm_86) port: honest status, supported subset, build/run, roadmap |
 
 The executable `--help` output is the exact source for command-line option spelling and defaults.
 

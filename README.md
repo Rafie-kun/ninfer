@@ -8,6 +8,7 @@
 > 27B weights (~16–24GB) exceed both 8GB (~7.5 usable) and 12GB (~11 usable) — see
 > “Ampere 8–12GB notes” below; tiny `--max-context`/`--kv-capacity` (2–4k on 8GB, 4–8k on
 > 12GB, C=1) is required and weight residency remains the open blocker.
+> Full fork status, memory math, and roadmap: [docs/ampere-fork.md](docs/ampere-fork.md).
 
 > Selected checkpoints. Maximum single-GPU inference performance.
 
