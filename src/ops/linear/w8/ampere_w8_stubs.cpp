@@ -112,7 +112,7 @@ void w8_gdn_input_splitk_conv_snapshot_launch(
 }
 
 void w8_gdn_input_splitk_conv_record_launch(
-    const Tensor&, const Weight&, const Tensor&, Tensor&, const Tensor&, const Tensor&,
+    const Tensor&, const Weight&, const Tensor&, const Tensor&, const Tensor&, const Tensor&,
     Tensor&, Tensor&, Tensor&, Tensor&, Tensor&, cudaStream_t) {
     throw_ampere_w8("w8_gdn_input_splitk_conv_record_launch");
 }
