@@ -18,6 +18,7 @@ Thank you for considering contributing! This document explains how you can help 
   - Steps to reproduce the problem.
   - Any relevant output/logs (especially `Ampere fork:` messages).
 - **Before posting**, search existing issues – many problems (e.g. unsupported KV dtype, NVFP4 on sm_86) are already documented in [docs/ampere-fork.md](docs/ampere-fork.md).
+- If you’re filing a new issue, please use the appropriate template under `.github/ISSUE_TEMPLATE/` (bug report or feature request) so maintainers have the right information up front.
 
 ## Contributing Code
 1. **Fork the repo** and create a branch from `main`:
