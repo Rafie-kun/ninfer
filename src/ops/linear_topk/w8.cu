@@ -7,6 +7,8 @@
 #include "ops/linear/w8/w8_small_t_mma.cuh"
 #include "ops/linear_topk/grouped_ksplit_topk.cuh"
 
+#include <cuda_bf16.h>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>

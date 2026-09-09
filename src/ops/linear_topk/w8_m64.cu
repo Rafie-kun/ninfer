@@ -9,6 +9,8 @@
 
 #include <cub/warp/warp_merge_sort.cuh>
 
+#include <cuda_bf16.h>
+
 #include <cstdint>
 #include <stdexcept>
 

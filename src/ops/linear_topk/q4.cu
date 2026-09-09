@@ -4,6 +4,8 @@
 #include "ops/common/score_id_order.cuh"
 #include "ops/linear/q4/q4_small_t_mma.cuh"
 
+#include <cuda_bf16.h>
+
 #include <cstdint>
 #include <array>
 #include <utility>

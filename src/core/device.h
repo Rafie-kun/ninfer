@@ -2,6 +2,12 @@
 
 #include <cuda_runtime.h>
 
+// Ampere fork: explicit half-precision type headers. CUDA 13.3's reorganized CCCL
+// no longer pulls these in transitively, so TUs using __nv_bfloat16/__half failed
+// with "incomplete type" errors. device.h is the common prefix header.
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
+
 #include <cstddef>
 #include <cstdint>
 
