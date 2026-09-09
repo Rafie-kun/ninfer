@@ -719,7 +719,7 @@ void validate_target_options(DeviceContext& device, const EngineOptions& options
         }
         if (options.enable_vision) {
             throw std::invalid_argument(
-                "Ampere fork: --vision is not supported in this build (8GB residency)");
+                "Ampere fork: --vision is not supported in this build (8-12GB residency)");
         }
         if (options.speculative.backend == SpeculativeBackend::DFlash ||
             options.speculative.backend == SpeculativeBackend::DFlash2) {

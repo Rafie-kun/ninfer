@@ -1,11 +1,13 @@
-# NInfer — Ampere fork (RTX 3060 Ti / sm_86, experimental)
+# NInfer — Ampere fork (RTX 3060 / 3060 Ti, sm_86, experimental)
 
 > Fork of [Neroued/ninfer](https://github.com/Neroued/ninfer) retargeted to Ampere.
-> Upstream supports RTX 5090 (`sm_120a`) only. This fork builds for `sm_86` (tested target:
-> RTX 3060 Ti 8GB) with a reduced subset: `groupwise-int` text-only, BF16/INT8 KV, `--spec none`
-> (MTP optional), no vision, no NVFP4/FP8-MMA. 27B weights (~16–24GB) still exceed 8GB — see
-> “Ampere 8GB notes” below; small `--max-context`/`--kv-capacity` (2–4k, C=1) is required and
-> weight residency remains the open blocker.
+> Upstream supports RTX 5090 (`sm_120a`) only. This fork builds for `sm_86` (targets:
+> RTX 3060 12GB / RTX 3060 Ti 8GB — note: the Ti never shipped as 12GB, both are `sm_86` so
+> the build is identical, only usable VRAM differs) with a reduced subset: `groupwise-int`
+> text-only, BF16/INT8 KV, `--spec none` (MTP optional), no vision, no NVFP4/FP8-MMA.
+> 27B weights (~16–24GB) exceed both 8GB (~7.5 usable) and 12GB (~11 usable) — see
+> “Ampere 8–12GB notes” below; tiny `--max-context`/`--kv-capacity` (2–4k on 8GB, 4–8k on
+> 12GB, C=1) is required and weight residency remains the open blocker.
 
 > Selected checkpoints. Maximum single-GPU inference performance.
 
@@ -49,22 +51,25 @@ cmake --build build -j
 Tests, benchmarks, and maintainer tools are excluded from the default build. There is no install
 target or packaged binary distribution; run NInfer from its source build tree.
 
-### Ampere 8GB notes (RTX 3060 Ti)
+### Ampere 8–12GB notes (RTX 3060 12GB / 3060 Ti 8GB)
 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=86
 cmake --build build -j
+# 12GB card:
 ./build/apps/ninfer models/qwen3_6_27b.ninfer \
   --prompt "Reply with one short sentence." \
-  --max-context 2048 --kv-capacity 2048 --max-new 256 \
+  --max-context 4096 --kv-capacity 4096 --max-new 256 \
   --kv-dtype int8 --max-concurrency 1
+# 8GB card: halve to --max-context 2048 --kv-capacity 2048.
 ```
 
 Use only `groupwise-int` artifacts (`qwen3_6_27b.ninfer`), `--kv-dtype bf16|int8`,
 `--spec none`, no `--vision`, C=1. `nvfp4` artifacts, `fp8/nvfp4/k8v4` KV, vision, and
 DFlash/DFlash2 fail fast with an Ampere message. 27B `groupwise-int` weights (~16.3 GiB)
-exceed 8GB on their own — startup will OOM until weight streaming/offload or a ~2b/w
-registered format lands; 2–4k context keeps KV/residency minimal for bring-up.
+exceed 12GB (~11 usable) and 8GB (~7.5 usable) on their own — startup will OOM until
+weight streaming/offload or a ~2b/w registered format lands; the context sizes above only
+keep KV/residency minimal for bring-up. INT8 KV (~33KB/tok) halves KV vs BF16 (~64KB/tok).
 
 Download the artifact used by this example with the Hugging Face CLI:
 
