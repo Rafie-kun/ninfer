@@ -1,15 +1,19 @@
 cmake_minimum_required(VERSION 3.28)
 
-# The current implementation is compiled only for sm_120a. Set and validate the
-# architecture before CUDA compiler detection so CMake never injects a generic
-# host-toolchain default or accepts an unsupported target.
+# Ampere/Blackwell fork: allow sm_86 (3060 Ti), sm_89, sm_90, sm_120a.
+# Original upstream is sm_120a-only; this fork downgrades to Ampere.
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES 120a CACHE STRING "CUDA architectures to build")
+  set(CMAKE_CUDA_ARCHITECTURES 86 CACHE STRING "CUDA architectures to build")
 endif()
-if(NOT CMAKE_CUDA_ARCHITECTURES STREQUAL "120a")
-  message(FATAL_ERROR
-    "NInfer supports only CMAKE_CUDA_ARCHITECTURES=120a; got "
-    "'${CMAKE_CUDA_ARCHITECTURES}'")
+set(NINFER_SUPPORTED_ARCHS "86;86a;89;90;120;120a")
+if(NOT CMAKE_CUDA_ARCHITECTURES IN_LIST NINFER_SUPPORTED_ARCHS)
+  message(WARNING
+    "NInfer Ampere fork: CMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES} "
+    "not in tested set ${NINFER_SUPPORTED_ARCHS}. Build may fail on NVFP4/FP8 paths.")
+endif()
+if(CMAKE_CUDA_ARCHITECTURES MATCHES "86|89")
+  message(STATUS "Ampere fork: NVFP4 and FP8 tensor paths will be disabled (no mxf4/f8 mma on sm_86)")
+  add_compile_definitions(NINFER_DISABLE_NVFP4=1 NINFER_DISABLE_FP8_MMA=1)
 endif()
 
 project(ninfer LANGUAGES C CXX CUDA)
