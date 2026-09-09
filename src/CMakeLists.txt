@@ -50,16 +50,70 @@ target_link_libraries(ninfer_artifact PUBLIC ninfer_core)
 # warpgroups to consumer warpgroups. Relocatable device code makes ptxas discard that contract, so
 # these self-contained kernels are intentionally compiled in a non-RDC archive and called through
 # host launchers from ninfer_ops.
-add_library(ninfer_nvfp4_non_rdc STATIC
-  ops/linear/nvfp4/nvfp4_w4a4_tma.cu
-  ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_w4a4_tma.cu
-  ops/softmax_attention/dense/causal_cache/prompt_nvfp4_non_rdc.cu)
-ninfer_internal_includes(ninfer_nvfp4_non_rdc)
-set_target_properties(ninfer_nvfp4_non_rdc PROPERTIES
-  CUDA_SEPARABLE_COMPILATION OFF
-  CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
-target_compile_options(ninfer_nvfp4_non_rdc PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>)
-target_link_libraries(ninfer_nvfp4_non_rdc PRIVATE ninfer_core CUDA::cudart CUDA::cuda_driver)
+# Ampere fork: excluded entirely when NINFER_DISABLE_NVFP4 (no TMA/mbarrier/e2m1 on sm_86).
+if(NINFER_DISABLE_NVFP4)
+  add_library(ninfer_nvfp4_non_rdc INTERFACE)
+else()
+  add_library(ninfer_nvfp4_non_rdc STATIC
+    ops/linear/nvfp4/nvfp4_w4a4_tma.cu
+    ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_w4a4_tma.cu
+    ops/softmax_attention/dense/causal_cache/prompt_nvfp4_non_rdc.cu)
+  ninfer_internal_includes(ninfer_nvfp4_non_rdc)
+  set_target_properties(ninfer_nvfp4_non_rdc PROPERTIES
+    CUDA_SEPARABLE_COMPILATION OFF
+    CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
+  target_compile_options(ninfer_nvfp4_non_rdc PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>)
+  target_link_libraries(ninfer_nvfp4_non_rdc PRIVATE ninfer_core CUDA::cudart CUDA::cuda_driver)
+endif()
+
+# Ampere fork: Blackwell-only kernel sources compiled out when disabled.
+# NVFP4 needs mxf4 MMA + TMA + e2m1 converts; FP8 MMA needs sm_90+ f8f6f4 MMA.
+# FP8 A16 SIMT decode stays available; only MMA/A8 variants are excluded.
+set(NINFER_OPS_NVFP4_SOURCES
+  ops/softmax_attention/dense/causal_cache/small_t_nvfp4.cu
+  ops/softmax_attention/dense/causal_cache/small_t_k8v4.cu
+  ops/softmax_attention/dense/causal_cache/prompt_nvfp4.cu
+  ops/softmax_attention/dense/causal_cache/prompt_k8v4.cu
+  ops/kv_cache/append/nvfp4_launch.cu
+  ops/kv_cache/append/k8v4_launch.cu
+  ops/attn_input_proj/nvfp4/nvfp4_attn_input_decode.cu
+  ops/attn_input_proj/nvfp4/nvfp4_attn_input_small_t.cu
+  ops/attn_input_proj/nvfp4/nvfp4_attn_input_w4a4.cu
+  ops/gdn_input_proj/nvfp4/nvfp4_gdn_input_decode.cu
+  ops/gdn_input_proj/nvfp4/nvfp4_gdn_input_small_t.cu
+  ops/gdn_input_proj/nvfp4/nvfp4_gdn_input_w4a4.cu
+  ops/gdn_input_proj/nvfp4/nvfp4_gdn_snapshot_decode.cu
+  ops/gdn_input_proj/nvfp4/nvfp4_gdn_snapshot_small_t.cu
+  ops/gdn_input_proj/nvfp4/nvfp4_gdn_snapshot_post.cu
+  ops/linear/nvfp4/nvfp4_gemv.cu
+  ops/linear/nvfp4/nvfp4_small_t.cu
+  ops/linear/nvfp4/nvfp4_w4a4.cu
+  ops/linear_add/nvfp4/nvfp4_linear_add_decode.cu
+  ops/linear_add/nvfp4/nvfp4_linear_add_small_t.cu
+  ops/linear_add/nvfp4/nvfp4_linear_add_w4a4.cu
+  ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_decode.cu
+  ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_small_t.cu
+  ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_w4a4.cu)
+set(NINFER_OPS_FP8_MMA_SOURCES
+  ops/softmax_attention/dense/causal_cache/small_t_fp8.cu
+  ops/softmax_attention/dense/causal_cache/prompt_fp8.cu
+  ops/attn_input_proj/fp8/fp8_attn_input_a16_small_t.cu
+  ops/attn_input_proj/fp8/fp8_attn_input_a16_gemm.cu
+  ops/attn_input_proj/fp8/fp8_attn_input_a8.cu
+  ops/gdn_input_proj/fp8/fp8_gdn_input_a8.cu
+  ops/linear/fp8/fp8_a16_small_t_mma.cu
+  ops/linear/fp8/fp8_a16_gemm_mma.cu
+  ops/linear/fp8/fp8_a8.cu
+  ops/linear_add/fp8/fp8_linear_add_a8.cu
+  ops/linear_swiglu/fp8/fp8_linear_swiglu_a8.cu
+  ops/linear_topk/fp8.cu
+  ops/linear_topk/fp8_m64.cu)
+if(NINFER_DISABLE_NVFP4)
+  set(NINFER_OPS_NVFP4_SOURCES "")
+endif()
+if(NINFER_DISABLE_FP8_MMA)
+  set(NINFER_OPS_FP8_MMA_SOURCES "")
+endif()
 
 # Shared mathematical Ops. The list is intentionally explicit: adding a
 # source is a build-boundary decision, not an accidental recursive-glob side effect.
@@ -99,13 +153,7 @@ add_library(ninfer_ops STATIC
   # Softmax Attention and KV-cache state transitions.
   ops/softmax_attention/dense/causal_cache/causal_softmax_attention.cpp
   ops/softmax_attention/dense/causal_cache/small_t.cu
-  ops/softmax_attention/dense/causal_cache/small_t_fp8.cu
-  ops/softmax_attention/dense/causal_cache/small_t_nvfp4.cu
-  ops/softmax_attention/dense/causal_cache/small_t_k8v4.cu
   ops/softmax_attention/dense/causal_cache/prompt.cu
-  ops/softmax_attention/dense/causal_cache/prompt_fp8.cu
-  ops/softmax_attention/dense/causal_cache/prompt_nvfp4.cu
-  ops/softmax_attention/dense/causal_cache/prompt_k8v4.cu
   ops/softmax_attention/dense/packed/packed_softmax_attention.cpp
   ops/softmax_attention/dense/packed/launch.cu
   ops/softmax_attention/dense/context/context_softmax_attention.cpp
@@ -114,8 +162,6 @@ add_library(ninfer_ops STATIC
   ops/softmax_attention/sliding_window/launch.cu
   ops/kv_cache/append/kv_cache_append.cpp
   ops/kv_cache/append/launch.cu
-  ops/kv_cache/append/nvfp4_launch.cu
-  ops/kv_cache/append/k8v4_launch.cu
   # Gated DeltaNet Linear Attention core.
   ops/linear_attention/gated_delta_net/gated_delta_net.cpp
   ops/linear_attention/gated_delta_net/replay.cpp
@@ -130,13 +176,7 @@ add_library(ninfer_ops STATIC
   ops/attn_input_proj/bf16/bf16_attn_input_plan.cpp
   ops/attn_input_proj/fp8/fp8_attn_input_decode.cu
   ops/attn_input_proj/fp8/fp8_attn_input_small_t.cu
-  ops/attn_input_proj/fp8/fp8_attn_input_a16_small_t.cu
-  ops/attn_input_proj/fp8/fp8_attn_input_a16_gemm.cu
-  ops/attn_input_proj/fp8/fp8_attn_input_a8.cu
   ops/attn_input_proj/fp8/fp8_attn_input_plan.cpp
-  ops/attn_input_proj/nvfp4/nvfp4_attn_input_decode.cu
-  ops/attn_input_proj/nvfp4/nvfp4_attn_input_small_t.cu
-  ops/attn_input_proj/nvfp4/nvfp4_attn_input_w4a4.cu
   ops/attn_input_proj/nvfp4/nvfp4_attn_input_plan.cpp
   ops/attn_input_proj/q4_q5/q4_q5_attn_input_gemm_mma.cu
   ops/attn_input_proj/q4_q5/q4_q5_attn_input_small_t.cu
@@ -149,17 +189,10 @@ add_library(ninfer_ops STATIC
   ops/attn_input_proj/w8/w8_attn_input_plan.cpp
   ops/gdn_input_proj/fp8/fp8_gdn_input_decode.cu
   ops/gdn_input_proj/fp8/fp8_gdn_input_matrix.cu
-  ops/gdn_input_proj/fp8/fp8_gdn_input_a8.cu
   ops/gdn_input_proj/fp8/fp8_gdn_input_plan.cpp
   ops/gdn_input_proj/fp8/fp8_gdn_conv_fused.cu
   ops/gdn_input_proj/fp8/fp8_gdn_conv_plan.cpp
-  ops/gdn_input_proj/nvfp4/nvfp4_gdn_input_decode.cu
-  ops/gdn_input_proj/nvfp4/nvfp4_gdn_input_small_t.cu
-  ops/gdn_input_proj/nvfp4/nvfp4_gdn_input_w4a4.cu
   ops/gdn_input_proj/nvfp4/nvfp4_gdn_input_plan.cpp
-  ops/gdn_input_proj/nvfp4/nvfp4_gdn_snapshot_decode.cu
-  ops/gdn_input_proj/nvfp4/nvfp4_gdn_snapshot_small_t.cu
-  ops/gdn_input_proj/nvfp4/nvfp4_gdn_snapshot_post.cu
   ops/gdn_input_proj/nvfp4/nvfp4_gdn_snapshot_plan.cpp
   ops/gdn_input_proj/q4_q5/q4_q5_gdn_input_gemm_mma.cu
   ops/gdn_input_proj/q4_q5/q4_q5_gdn_input_independent.cu
@@ -186,14 +219,8 @@ add_library(ninfer_ops STATIC
   ops/linear/fp8/fp8_format.cpp
   ops/linear/fp8/fp8_gemv.cu
   ops/linear/fp8/fp8_small_t.cu
-  ops/linear/fp8/fp8_a16_small_t_mma.cu
-  ops/linear/fp8/fp8_a16_gemm_mma.cu
-  ops/linear/fp8/fp8_a8.cu
   ops/linear/fp8/fp8_dispatch.cpp
   ops/linear/nvfp4/nvfp4_format.cpp
-  ops/linear/nvfp4/nvfp4_gemv.cu
-  ops/linear/nvfp4/nvfp4_small_t.cu
-  ops/linear/nvfp4/nvfp4_w4a4.cu
   ops/linear/nvfp4/nvfp4_dispatch.cpp
   ops/linear/q4/q4_small_t_mma.cu
   ops/linear/q4/q4_rowsplit_gemm_mma.cu
@@ -208,13 +235,9 @@ add_library(ninfer_ops STATIC
   ops/linear_add/bf16/bf16_linear_add_gemm_mma.cu
   ops/linear_add/bf16/bf16_linear_add_small_t.cu
   ops/linear_add/bf16/bf16_linear_add_plan.cpp
-  ops/linear_add/nvfp4/nvfp4_linear_add_decode.cu
-  ops/linear_add/nvfp4/nvfp4_linear_add_small_t.cu
-  ops/linear_add/nvfp4/nvfp4_linear_add_w4a4.cu
   ops/linear_add/nvfp4/nvfp4_linear_add_plan.cpp
   ops/linear_add/fp8/fp8_linear_add_decode.cu
   ops/linear_add/fp8/fp8_linear_add_small_t.cu
-  ops/linear_add/fp8/fp8_linear_add_a8.cu
   ops/linear_add/fp8/fp8_linear_add_plan.cpp
   ops/linear_add/q5/q5_linear_add_gemm_mma.cu
   ops/linear_add/q5/q5_linear_add_gemm_simt.cu
@@ -227,13 +250,9 @@ add_library(ninfer_ops STATIC
   ops/linear_swiglu/q4/q4_linear_swiglu_gemm_mma.cu
   ops/linear_swiglu/q4/q4_linear_swiglu_gemv.cu
   ops/linear_swiglu/q4/q4_linear_swiglu_plan.cpp
-  ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_decode.cu
-  ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_small_t.cu
-  ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_w4a4.cu
   ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_plan.cpp
   ops/linear_swiglu/fp8/fp8_linear_swiglu_decode.cu
   ops/linear_swiglu/fp8/fp8_linear_swiglu_small_t.cu
-  ops/linear_swiglu/fp8/fp8_linear_swiglu_a8.cu
   ops/linear_swiglu/fp8/fp8_linear_swiglu_plan.cpp
   ops/linear_swiglu/w8/w8_linear_swiglu_decode.cu
   ops/linear_swiglu/w8/w8_dflash2_linear_swiglu.cu
@@ -258,8 +277,6 @@ add_library(ninfer_ops STATIC
   ops/linear_topk/linear_topk.cpp
   ops/linear_topk/w8.cu
   ops/linear_topk/w8_m64.cu
-  ops/linear_topk/fp8.cu
-  ops/linear_topk/fp8_m64.cu
   ops/linear_topk/q4.cu
   ops/linear_topk/q4_m64.cu
   ops/linear_topk/merge.cu
@@ -304,7 +321,9 @@ add_library(ninfer_ops STATIC
   ops/wrapper/silu_mul.cpp
   ops/wrapper/sparse_moe.cpp
   ops/wrapper/target_logprobs.cpp
-  ops/wrapper/vision_pos_embed.cpp)
+  ops/wrapper/vision_pos_embed.cpp
+  ${NINFER_OPS_NVFP4_SOURCES}
+  ${NINFER_OPS_FP8_MMA_SOURCES})
 ninfer_internal_includes(ninfer_ops)
 ninfer_cuda_archive(ninfer_ops)
 target_link_libraries(ninfer_ops PUBLIC ninfer_core PRIVATE ninfer_nvfp4_non_rdc)

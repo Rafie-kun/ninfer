@@ -2,8 +2,10 @@
 
 #include "ops/linear/nvfp4/nvfp4_config.h"
 #include "ops/linear/nvfp4/nvfp4_format.h"
+#ifndef NINFER_DISABLE_NVFP4
 #include "ops/linear/nvfp4/nvfp4_launch.h"
 #include "ops/linear/nvfp4/nvfp4_w4a4_plan.h"
+#endif
 
 #include <algorithm>
 #include <cstdint>
@@ -11,6 +13,8 @@
 
 namespace ninfer::ops::detail {
 namespace {
+
+#ifndef NINFER_DISABLE_NVFP4
 
 enum class Nvfp4LinearRoute : std::uint8_t {
     A16,
@@ -59,11 +63,24 @@ void launch_a16(const Tensor& x, const Weight& weight, Tensor& out, cudaStream_t
     }
 }
 
+#else
+// NVFP4 helpers omitted in Ampere build.
+#endif
 } // namespace
 
 std::size_t nvfp4_linear_workspace_capacity_bytes(std::int32_t output_rows, std::int32_t input_rows,
                                                   LinearPolicy policy, std::int32_t min_tokens,
                                                   std::int32_t max_tokens) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)output_rows;
+    (void)input_rows;
+    (void)policy;
+    (void)min_tokens;
+    (void)max_tokens;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 weights are not supported in this build (sm_86 has no mxf4/TMA/e2m1; "
+        "use groupwise-int artifacts)");
+#else
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("nvfp4 linear workspace: invalid token interval");
     }
@@ -71,10 +88,22 @@ std::size_t nvfp4_linear_workspace_capacity_bytes(std::int32_t output_rows, std:
     return resolve_route(output_rows, input_rows, policy, max_tokens) == Nvfp4LinearRoute::W4A4
                ? nvfp4_w4a4_workspace_capacity_bytes(max_tokens, input_rows)
                : 0;
+#endif
 }
 
 void nvfp4_dispatch(const Tensor& x, const Weight& weight, Tensor& out, LinearPolicy policy,
                     WorkspaceArena* workspace, cudaStream_t stream) {
+#ifdef NINFER_DISABLE_NVFP4
+    (void)x;
+    (void)weight;
+    (void)out;
+    (void)policy;
+    (void)workspace;
+    (void)stream;
+    throw std::invalid_argument(
+        "Ampere fork: NVFP4 weights are not supported in this build (sm_86 has no mxf4/TMA/e2m1; "
+        "use groupwise-int artifacts)");
+#else
     validate_nvfp4_weight(weight, "nvfp4 linear");
     if (!is_nvfp4_linear_problem(weight.n, weight.k) || x.ne[1] <= 0) {
         throw std::invalid_argument("nvfp4 linear: unsupported shape");
@@ -90,6 +119,7 @@ void nvfp4_dispatch(const Tensor& x, const Weight& weight, Tensor& out, LinearPo
     auto scope                       = workspace->scope();
     const Nvfp4W4a4Workspace scratch = allocate_nvfp4_w4a4_workspace(*workspace, x.ne[1], weight.k);
     launch_nvfp4_w4a4(x, weight, out, scratch, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail

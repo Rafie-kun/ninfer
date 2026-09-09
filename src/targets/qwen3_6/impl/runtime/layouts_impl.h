@@ -702,7 +702,34 @@ void validate_target_options(DeviceContext& device, const EngineOptions& options
         break;
     }
     if (device.compute_capability() != 120) {
+#ifdef NINFER_DISABLE_NVFP4
+        // Ampere fork: allow sm_86/sm_89/sm_90 for groupwise-int text-only.
+        const int cc = device.compute_capability();
+        if (cc != 86 && cc != 89 && cc != 90 && cc != 120) {
+            throw std::invalid_argument(
+                "Ampere fork runtime supports compute capability 8.6/8.9/9.0/12.0");
+        }
+        // Ampere has no FP8/NVFP4 MMA, TMA, or e2m1 converts; restrict to the
+        // subset that assembles and runs on sm_86. Weights profile (NVFP4) is
+        // rejected in each target package; KV/spec/vision rejected here.
+        if (options.kv_cache != KvCacheStorage::BFloat16 &&
+            options.kv_cache != KvCacheStorage::Int8Group64) {
+            throw std::invalid_argument(
+                "Ampere fork: kv-dtype must be bf16 or int8 (fp8/nvfp4/k8v4 need sm_120a)");
+        }
+        if (options.enable_vision) {
+            throw std::invalid_argument(
+                "Ampere fork: --vision is not supported in this build (8GB residency)");
+        }
+        if (options.speculative.backend == SpeculativeBackend::DFlash ||
+            options.speculative.backend == SpeculativeBackend::DFlash2) {
+            throw std::invalid_argument(
+                "Ampere fork: DFlash/DFlash2 speculative backends are not supported; use "
+                "--spec none (or mtp)");
+        }
+#else
         throw std::invalid_argument("Qwen3.6 family runtime requires compute capability 12.0");
+#endif
     }
 }
 

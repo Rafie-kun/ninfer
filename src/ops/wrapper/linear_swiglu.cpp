@@ -55,9 +55,20 @@ std::size_t linear_swiglu_workspace_capacity_bytes(QType qtype, std::int32_t gat
             gate_up_rows, gate_up_rows / 2, input_rows, input_rows, min_tokens, max_tokens);
     }
     if (qtype == QType::NVFP4 && gate_up_rows == 34816 && input_rows == 5120) {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: NVFP4 linear_swiglu is not supported in this build; use groupwise-int");
+#else
         return detail::nvfp4_linear_swiglu_workspace_capacity_bytes(policy, min_tokens, max_tokens);
+#endif
     }
     if (qtype == QType::FP8_E4M3FN_ROW_BF16S && gate_up_rows == 34816 && input_rows == 5120) {
+#ifdef NINFER_DISABLE_FP8_MMA
+        if (policy != LinearPolicy::A16Only) {
+            throw std::invalid_argument(
+                "Ampere fork: FP8 A8/MMA linear_swiglu is not supported; use A16Only");
+        }
+#endif
         return detail::fp8_linear_swiglu_workspace_capacity_bytes(policy, min_tokens, max_tokens);
     }
     throw std::invalid_argument("linear_swiglu workspace: unsupported weight format");
@@ -115,14 +126,25 @@ void linear_swiglu(const Tensor& x, const Weight& gate_up_weight, Tensor& out, L
 
     if (fp8_weight) {
         (void)detail::validate_fp8_weight(gate_up_weight, "fp8 linear_swiglu");
+#ifdef NINFER_DISABLE_FP8_MMA
+        if (policy != LinearPolicy::A16Only) {
+            throw std::invalid_argument(
+                "Ampere fork: FP8 A8/MMA linear_swiglu is not supported; use A16Only");
+        }
+#endif
         detail::fp8_linear_swiglu_dispatch(x, gate_up_weight, out, policy, ws, stream);
         return;
     }
 
     if (nvfp4_weight) {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::invalid_argument(
+            "Ampere fork: NVFP4 linear_swiglu is not supported in this build; use groupwise-int");
+#else
         (void)detail::validate_nvfp4_weight(gate_up_weight, "nvfp4 linear_swiglu");
         detail::nvfp4_linear_swiglu_dispatch(x, gate_up_weight, out, policy, ws, stream);
         return;
+#endif
     }
 
     if (policy != LinearPolicy::A16Only) {

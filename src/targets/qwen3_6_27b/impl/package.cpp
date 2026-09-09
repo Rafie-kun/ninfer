@@ -90,10 +90,22 @@ Package::WeightsProfile Package::resolve_weights(const artifact::ArtifactIdentit
         return WeightsProfile::Qwen38GroupwiseInt;
     }
     if (identity.model_id == model_id && identity.weights_id == "nvfp4") {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::runtime_error(
+            "Ampere fork: artifact 'qwen3.6-27b/nvfp4' is not supported in this build (sm_86 has "
+            "no mxf4/TMA/e2m1; use qwen3_6_27b.ninfer groupwise-int)");
+#else
         return WeightsProfile::Qwen36Nvfp4;
+#endif
     }
     if (identity.model_id == qwen3_8_model_id && identity.weights_id == "nvfp4") {
+#ifdef NINFER_DISABLE_NVFP4
+        throw std::runtime_error(
+            "Ampere fork: artifact 'qwen3.8-27b/nvfp4' is not supported in this build (sm_86 has "
+            "no mxf4/TMA/e2m1; use qwen3_8_27b.ninfer groupwise-int)");
+#else
         return WeightsProfile::Qwen38Nvfp4;
+#endif
     }
     throw std::runtime_error("artifact identity '" + identity.model_id + "/" + identity.weights_id +
                              "' is not supported by target '" + std::string(target_key) + "'");

@@ -103,16 +103,38 @@ std::size_t fp8_linear_workspace_capacity_bytes(std::int32_t output_rows, std::i
     if (min_tokens <= 0 || max_tokens < min_tokens) {
         throw std::invalid_argument("fp8 linear workspace: invalid token interval");
     }
+#ifdef NINFER_DISABLE_FP8_MMA
+    // Ampere fork: FP8 MMA/A8 routes compiled out; A16 SIMT decode only.
+    if (policy != LinearPolicy::A16Only) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A8/MMA compute is not supported in this build (requires sm_90+; "
+            "use A16Only policy)");
+    }
+    (void)output_rows;
+    (void)input_rows;
+    return 0;
+#else
     const Fp8Problem problem = resolve_fp8_problem(output_rows, input_rows);
     (void)resolve_route(output_rows, input_rows, policy, min_tokens);
     (void)resolve_route(output_rows, input_rows, policy, max_tokens);
     return interval_uses_a8(problem, policy, min_tokens, max_tokens)
                ? fp8_a8_workspace_capacity_bytes(max_tokens, input_rows)
                : 0;
+#endif
 }
 
 void fp8_dispatch(const Tensor& x, const Weight& weight, Tensor& out, LinearPolicy policy,
                   WorkspaceArena* workspace, cudaStream_t stream) {
+#ifdef NINFER_DISABLE_FP8_MMA
+    if (policy != LinearPolicy::A16Only) {
+        throw std::invalid_argument(
+            "Ampere fork: FP8 A8/MMA compute is not supported in this build (requires sm_90+; "
+            "use A16Only policy)");
+    }
+    validate_fp8_weight(weight, "fp8 linear");
+    launch_a16(x, weight, out, stream);
+    (void)workspace;
+#else
     validate_fp8_weight(weight, "fp8 linear");
     const Fp8LinearRoute route = resolve_route(weight.n, weight.k, policy, x.ne[1]);
     if (route == Fp8LinearRoute::A16) {
@@ -125,6 +147,7 @@ void fp8_dispatch(const Tensor& x, const Weight& weight, Tensor& out, LinearPoli
     auto scope                   = workspace->scope();
     const Fp8A8Workspace scratch = allocate_fp8_a8_workspace(*workspace, x.ne[1], weight.k);
     launch_fp8_a8(x, weight, out, scratch, stream);
+#endif
 }
 
 } // namespace ninfer::ops::detail
