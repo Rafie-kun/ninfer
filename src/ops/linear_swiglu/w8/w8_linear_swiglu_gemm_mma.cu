@@ -115,10 +115,14 @@ void w8_dflash2_linear_swiglu_mma_r64_c80_k128_launch(const Tensor& x, const Wei
     launch_route<Schedule>(x, w, out, stream);
 }
 
+// Ampere fork: <64,96,64,...> needs 0xc400 static shared (>48 KiB sm_86 cap);
+// stubbed in ampere_w8_stubs.cpp.
+#ifndef NINFER_DISABLE_W8_BIG_SMEM
 void w8_dflash2_linear_swiglu_mma_r64_c96_k128_launch(const Tensor& x, const Weight& w, Tensor& out,
                                                       cudaStream_t stream) {
     using Schedule = W8RowSplitMmaGemmSchedule<64, 96, 64, 8, 2, 2, 128, 1>;
     launch_route<Schedule>(x, w, out, stream);
 }
+#endif
 
 } // namespace ninfer::ops::detail

@@ -8,6 +8,7 @@
 #include "ops/linear/w8/w8_launch.h"
 
 #include "ops/attn_input_proj/w8/w8_attn_input_kernels.h"
+#include "ops/dynamic_grouped_conv/w8/w8_dynamic_grouped_conv_add_kernels.h"
 #include "ops/gdn_input_proj/w8/w8_gdn_input_kernels.h"
 #include "ops/linear_add/w8/w8_linear_add_kernels.h"
 #include "ops/linear_pair/w8/w8_pair_kernels.h"
@@ -140,6 +141,17 @@ void w8_linear_swiglu_splitk_exact_t_launch(const Tensor&, const Weight&, Tensor
 
 void w8_dflash2_linear_swiglu_small_t_launch(const Tensor&, const Weight&, Tensor&, cudaStream_t) {
     throw_ampere_w8("w8_dflash2_linear_swiglu_small_t_launch");
+}
+
+void w8_dflash2_linear_swiglu_mma_r64_c96_k128_launch(const Tensor&, const Weight&, Tensor&,
+                                                      cudaStream_t) {
+    throw_ampere_w8("w8_dflash2_linear_swiglu_mma_r64_c96_k128_launch");
+}
+
+void w8_dynamic_grouped_conv_add_materialized_launch(W8DynamicConvAddSchedule, const Tensor&,
+                                                     const Weight&, const Tensor&, const Tensor&,
+                                                     Tensor&, Tensor&, cudaStream_t) {
+    throw_ampere_w8("w8_dynamic_grouped_conv_add_materialized_launch");
 }
 
 } // namespace ninfer::ops::detail

@@ -127,7 +127,8 @@ set(NINFER_OPS_W8_BIG_SMEM_SOURCES
   ops/linear_add/w8/w8_linear_add_gemm_splitk.cu
   ops/linear_pair/w8/w8_pair_gemm_splitk.cu
   ops/linear_swiglu/w8/w8_linear_swiglu_gemm_splitk.cu
-  ops/linear_swiglu/w8/w8_dflash2_linear_swiglu.cu)
+  ops/linear_swiglu/w8/w8_dflash2_linear_swiglu.cu
+  ops/dynamic_grouped_conv/w8/w8_dynamic_grouped_conv_add_materialized.cu)
 set(NINFER_OPS_W8_STUB_SOURCES "")
 if(NINFER_DISABLE_W8_BIG_SMEM)
   set(NINFER_OPS_W8_BIG_SMEM_SOURCES "")
@@ -224,7 +225,6 @@ add_library(ninfer_ops STATIC
   ops/dynamic_grouped_conv/bf16/bf16_dynamic_grouped_conv_prepare_partial.cu
   ops/dynamic_grouped_conv/bf16/bf16_dynamic_grouped_conv_prepare_reduce.cu
   ops/dynamic_grouped_conv/bf16/bf16_dynamic_grouped_conv_prepare_plan.cpp
-  ops/dynamic_grouped_conv/w8/w8_dynamic_grouped_conv_add_materialized.cu
   ops/dynamic_grouped_conv/w8/w8_dynamic_grouped_conv_add_plan.cpp
   ops/linear/bf16/bf16_gemv.cu
   ops/linear/bf16/bf16_gemm_mma.cu
