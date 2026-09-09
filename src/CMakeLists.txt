@@ -116,11 +116,18 @@ if(NINFER_DISABLE_FP8_MMA)
   set(NINFER_OPS_FP8_MMA_SOURCES "")
 endif()
 # Ampere fork: W8 kernels tuned past the sm_86 48 KiB static-shared cap
-# (w8_small_t 0xc200-0xe200, splitk up to 0x16000, one r64_c96 tile at 0xc400).
+# (small_t 0xc200-0xe200, splitk up to 0x16000, one r64_c96 tile at 0xc400).
 # Unreachable in the Ampere subset (no W8 weights execute); stubbed below.
 set(NINFER_OPS_W8_BIG_SMEM_SOURCES
   ops/linear/w8/w8_small_t.cu
-  ops/linear/w8/w8_rowsplit_gemm_splitk.cu)
+  ops/linear/w8/w8_rowsplit_gemm_splitk.cu
+  ops/attn_input_proj/w8/w8_attn_input_gemm_splitk.cu
+  ops/attn_input_proj/w8/w8_dflash2_attn_input.cu
+  ops/gdn_input_proj/w8/w8_gdn_input_gemm_splitk.cu
+  ops/linear_add/w8/w8_linear_add_gemm_splitk.cu
+  ops/linear_pair/w8/w8_pair_gemm_splitk.cu
+  ops/linear_swiglu/w8/w8_linear_swiglu_gemm_splitk.cu
+  ops/linear_swiglu/w8/w8_dflash2_linear_swiglu.cu)
 set(NINFER_OPS_W8_STUB_SOURCES "")
 if(NINFER_DISABLE_W8_BIG_SMEM)
   set(NINFER_OPS_W8_BIG_SMEM_SOURCES "")
@@ -196,8 +203,6 @@ add_library(ninfer_ops STATIC
   ops/attn_input_proj/w8/w8_attn_input_decode.cu
   ops/attn_input_proj/w8/w8_attn_input_gemm_mma.cu
   ops/attn_input_proj/w8/w8_attn_input_gemm_simt.cu
-  ops/attn_input_proj/w8/w8_attn_input_gemm_splitk.cu
-  ops/attn_input_proj/w8/w8_dflash2_attn_input.cu
   ops/attn_input_proj/w8/w8_attn_input_plan.cpp
   ops/gdn_input_proj/fp8/fp8_gdn_input_decode.cu
   ops/gdn_input_proj/fp8/fp8_gdn_input_plan.cpp
@@ -212,7 +217,6 @@ add_library(ninfer_ops STATIC
   ops/gdn_input_proj/gdn_projected_conv.cu
   ops/gdn_input_proj/w8/w8_gdn_input_decode.cu
   ops/gdn_input_proj/w8/w8_gdn_input_gemm_mma.cu
-  ops/gdn_input_proj/w8/w8_gdn_input_gemm_splitk.cu
   ops/gdn_input_proj/w8/w8_gdn_input_plan.cpp
   ops/gdn_gating_proj/bf16/bf16_gdn_norm_gating_proj_27.cu
   ops/gdn_gating_proj/bf16/bf16_gdn_gating_proj_kernels.cu
@@ -256,7 +260,6 @@ add_library(ninfer_ops STATIC
   ops/linear_add/q5/q5_linear_add_plan.cpp
   ops/linear_add/w8/w8_linear_add_gemm_mma.cu
   ops/linear_add/w8/w8_linear_add_gemm_simt.cu
-  ops/linear_add/w8/w8_linear_add_gemm_splitk.cu
   ops/linear_add/w8/w8_linear_add_plan.cpp
   ops/linear_swiglu/q4/q4_linear_swiglu_gemm_mma.cu
   ops/linear_swiglu/q4/q4_linear_swiglu_gemv.cu
@@ -266,9 +269,7 @@ add_library(ninfer_ops STATIC
   ops/linear_swiglu/fp8/fp8_linear_swiglu_small_t.cu
   ops/linear_swiglu/fp8/fp8_linear_swiglu_plan.cpp
   ops/linear_swiglu/w8/w8_linear_swiglu_decode.cu
-  ops/linear_swiglu/w8/w8_dflash2_linear_swiglu.cu
   ops/linear_swiglu/w8/w8_linear_swiglu_gemm_mma.cu
-  ops/linear_swiglu/w8/w8_linear_swiglu_gemm_splitk.cu
   ops/linear_swiglu/w8/w8_linear_swiglu_plan.cpp
   ops/linear/q6/q6_dispatch.cpp
   ops/linear/q6/q6_rowsplit_gemm_mma.cu
@@ -281,7 +282,6 @@ add_library(ninfer_ops STATIC
   ops/linear_pair/w8/w8_pair_decode.cu
   ops/linear_pair/w8/w8_pair_gemm_concat.cu
   ops/linear_pair/w8/w8_pair_gemm_mma.cu
-  ops/linear_pair/w8/w8_pair_gemm_splitk.cu
   ops/linear_pair/w8/w8_pair_plan.cpp
   ops/linear_topk/linear_topk.cpp
   ops/linear_topk/w8.cu
