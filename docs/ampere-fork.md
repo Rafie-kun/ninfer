@@ -43,6 +43,9 @@ Blackwell-only code and define `NINFER_DISABLE_NVFP4=1` / `NINFER_DISABLE_FP8_MM
   NVFP4/K8V4 `.cu` (mxf4 MMA, TMA/`mbarrier`, e2m1 converts don't exist on sm_86).
 - `NINFER_DISABLE_FP8_MMA`: drops FP8 MMA/A8 `.cu` (f8 MMA needs sm_90+).
   FP8 A16 SIMT decode stays.
+- `NINFER_DISABLE_PDL`: replaces programmatic dependent launch (`griddepcontrol`,
+  sm_90+) with plain same-stream launches plus no-op device hooks
+  (`src/core/pdl.cuh`). Same ordering, less overlap; all PDL pairs share one stream.
 
 Kept host dispatchers that used to call those kernels now throw an `Ampere fork: …`
 `invalid_argument` naming the supported alternative (`src/ops/**/…_plan.cpp`,
