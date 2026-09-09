@@ -30,7 +30,7 @@ on an Ampere box with CUDA 13.1.
 |---|---|---|
 | Weights | groupwise-int + NVFP4 | groupwise-int only (`qwen3_6_27b.ninfer`); NVFP4 artifacts fail fast |
 | KV dtype | bf16 / int8 / fp8 / nvfp4 / k8v4 | bf16 / int8 only |
-| Speculative | none / mtp / dflash / dflash2 | none (mtp allowed, adds residency) |
+| Speculative | none / mtp / dflash / dflash2 | none only (MTP needs stubbed W8 kernels) |
 | Vision (`--vision`) | yes | rejected |
 | Context | up to 240k+ | 2–4k (8GB) / 4–8k (12GB), C=1 for bring-up |
 
@@ -46,6 +46,10 @@ Blackwell-only code and define `NINFER_DISABLE_NVFP4=1` / `NINFER_DISABLE_FP8_MM
 - `NINFER_DISABLE_PDL`: replaces programmatic dependent launch (`griddepcontrol`,
   sm_90+) with plain same-stream launches plus no-op device hooks
   (`src/core/pdl.cuh`). Same ordering, less overlap; all PDL pairs share one stream.
+- `NINFER_DISABLE_W8_BIG_SMEM`: drops W8 kernels over the sm_86 48 KiB static-shared
+  cap (`w8_small_t` 0xc200–0xe200, splitk up to 0x16000, one r64_c96 tile at 0xc400)
+  and stubs their launchers (`src/ops/linear/w8/ampere_w8_stubs.cpp`). Retuning
+  those tiles for Ampere is open perf work; MTP stays rejected until then.
 
 Kept host dispatchers that used to call those kernels now throw an `Ampere fork: …`
 `invalid_argument` naming the supported alternative (`src/ops/**/…_plan.cpp`,

@@ -115,6 +115,17 @@ endif()
 if(NINFER_DISABLE_FP8_MMA)
   set(NINFER_OPS_FP8_MMA_SOURCES "")
 endif()
+# Ampere fork: W8 kernels tuned past the sm_86 48 KiB static-shared cap
+# (w8_small_t 0xc200-0xe200, splitk up to 0x16000, one r64_c96 tile at 0xc400).
+# Unreachable in the Ampere subset (no W8 weights execute); stubbed below.
+set(NINFER_OPS_W8_BIG_SMEM_SOURCES
+  ops/linear/w8/w8_small_t.cu
+  ops/linear/w8/w8_rowsplit_gemm_splitk.cu)
+set(NINFER_OPS_W8_STUB_SOURCES "")
+if(NINFER_DISABLE_W8_BIG_SMEM)
+  set(NINFER_OPS_W8_BIG_SMEM_SOURCES "")
+  set(NINFER_OPS_W8_STUB_SOURCES ops/linear/w8/ampere_w8_stubs.cpp)
+endif()
 
 # Shared mathematical Ops. The list is intentionally explicit: adding a
 # source is a build-boundary decision, not an accidental recursive-glob side effect.
@@ -266,8 +277,6 @@ add_library(ninfer_ops STATIC
   ops/linear/w8/w8_rowsplit_gemm_mma.cu
   ops/linear/w8/w8_rowsplit_gemm_simt.cu
   ops/linear/w8/w8_rowsplit_gemm_decode.cu
-  ops/linear/w8/w8_small_t.cu
-  ops/linear/w8/w8_rowsplit_gemm_splitk.cu
   ops/linear/w8/w8_dispatch.cpp
   ops/linear_pair/w8/w8_pair_decode.cu
   ops/linear_pair/w8/w8_pair_gemm_concat.cu
@@ -323,7 +332,9 @@ add_library(ninfer_ops STATIC
   ops/wrapper/target_logprobs.cpp
   ops/wrapper/vision_pos_embed.cpp
   ${NINFER_OPS_NVFP4_SOURCES}
-  ${NINFER_OPS_FP8_MMA_SOURCES})
+  ${NINFER_OPS_FP8_MMA_SOURCES}
+  ${NINFER_OPS_W8_BIG_SMEM_SOURCES}
+  ${NINFER_OPS_W8_STUB_SOURCES})
 ninfer_internal_includes(ninfer_ops)
 ninfer_cuda_archive(ninfer_ops)
 target_link_libraries(ninfer_ops PUBLIC ninfer_core PRIVATE ninfer_nvfp4_non_rdc)

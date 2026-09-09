@@ -4,7 +4,7 @@
 > Upstream supports RTX 5090 (`sm_120a`) only. This fork builds for `sm_86` (targets:
 > RTX 3060 12GB / RTX 3060 Ti 8GB — note: the Ti never shipped as 12GB, both are `sm_86` so
 > the build is identical, only usable VRAM differs) with a reduced subset: `groupwise-int`
-> text-only, BF16/INT8 KV, `--spec none` (MTP optional), no vision, no NVFP4/FP8-MMA.
+> text-only, BF16/INT8 KV, `--spec none`, no vision, no NVFP4/FP8-MMA, no MTP.
 > 27B weights (~16–24GB) exceed both 8GB (~7.5 usable) and 12GB (~11 usable) — see
 > “Ampere 8–12GB notes” below; tiny `--max-context`/`--kv-capacity` (2–4k on 8GB, 4–8k on
 > 12GB, C=1) is required and weight residency remains the open blocker.
@@ -67,7 +67,7 @@ cmake --build build -j
 
 Use only `groupwise-int` artifacts (`qwen3_6_27b.ninfer`), `--kv-dtype bf16|int8`,
 `--spec none`, no `--vision`, C=1. `nvfp4` artifacts, `fp8/nvfp4/k8v4` KV, vision, and
-DFlash/DFlash2 fail fast with an Ampere message. 27B `groupwise-int` weights (~16.3 GiB)
+any `--spec` backend fail fast with an Ampere message. 27B `groupwise-int` weights (~16.3 GiB)
 exceed 12GB (~11 usable) and 8GB (~7.5 usable) on their own — startup will OOM until
 weight streaming/offload or a ~2b/w registered format lands; the context sizes above only
 keep KV/residency minimal for bring-up. INT8 KV (~33KB/tok) halves KV vs BF16 (~64KB/tok).

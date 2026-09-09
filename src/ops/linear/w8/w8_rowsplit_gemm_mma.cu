@@ -75,7 +75,6 @@ using MmaR48C64  = W8RowSplitMmaGemmSchedule<48, 64, 48, 16, 3>;
 using MmaR48C96  = W8RowSplitMmaGemmSchedule<48, 96, 48, 16, 2>;
 using MmaR48C112 = W8RowSplitMmaGemmSchedule<48, 112, 48, 16, 2>;
 using MmaR48C128 = W8RowSplitMmaGemmSchedule<48, 128, 48, 16, 2>;
-using MmaR64C96  = W8RowSplitMmaGemmSchedule<64, 96, 64, 16, 2>;
 using MmaR64C112 = W8RowSplitMmaGemmSchedule<64, 112, 64, 16, 2>;
 using MmaR64C128 = W8RowSplitMmaGemmSchedule<64, 128, 64, 16, 2, 2>;
 using MmaR96C96  = W8RowSplitMmaGemmSchedule<96, 96, 48, 16, 2>;
@@ -84,6 +83,11 @@ using MmaR128C80 = W8RowSplitMmaGemmSchedule<128, 80, 64, 16, 2>;
 // Full-vocabulary cold-cache winners on either side of the 48-column frontier.
 using MmaR64x16C48K128A1 = W8RowSplitMmaGemmSchedule<64, 48, 16, 24, 2, 2, 128, 1>;
 using MmaR64x32C64K128A1 = W8RowSplitMmaGemmSchedule<64, 64, 32, 16, 2, 2, 128, 1>;
+// Ampere fork: MmaR64C96 needs 0xc400 static shared (>48 KiB sm_86 cap); compiled
+// out and stubbed in ampere_w8_stubs.cpp.
+#ifndef NINFER_DISABLE_W8_BIG_SMEM
+using MmaR64C96 = W8RowSplitMmaGemmSchedule<64, 96, 64, 16, 2>;
+#endif
 
 } // namespace
 
@@ -99,7 +103,9 @@ NINFER_W8_MMA_LAUNCHER(launch_w8_mma_r48_c64, MmaR48C64)
 NINFER_W8_MMA_LAUNCHER(launch_w8_mma_r48_c96, MmaR48C96)
 NINFER_W8_MMA_LAUNCHER(launch_w8_mma_r48_c112, MmaR48C112)
 NINFER_W8_MMA_LAUNCHER(launch_w8_mma_r48_c128, MmaR48C128)
+#ifndef NINFER_DISABLE_W8_BIG_SMEM
 NINFER_W8_MMA_LAUNCHER(launch_w8_mma_r64_c96, MmaR64C96)
+#endif
 NINFER_W8_MMA_LAUNCHER(launch_w8_mma_r64_c112, MmaR64C112)
 NINFER_W8_MMA_LAUNCHER(launch_w8_mma_r64_c128, MmaR64C128)
 NINFER_W8_MMA_LAUNCHER(launch_w8_mma_r96_c96, MmaR96C96)
@@ -119,7 +125,9 @@ NINFER_W8_EXACT_LAUNCHER(launch_w8_exact_mma_r32_c96, launch_w8_mma_r32_c96, 96)
 NINFER_W8_EXACT_LAUNCHER(launch_w8_exact_mma_r32_c128, launch_w8_mma_r32_c128, 128)
 NINFER_W8_EXACT_LAUNCHER(launch_w8_exact_mma_r48_c96, launch_w8_mma_r48_c96, 96)
 NINFER_W8_EXACT_LAUNCHER(launch_w8_exact_mma_r48_c128, launch_w8_mma_r48_c128, 128)
+#ifndef NINFER_DISABLE_W8_BIG_SMEM
 NINFER_W8_EXACT_LAUNCHER(launch_w8_exact_mma_r64_c96, launch_w8_mma_r64_c96, 96)
+#endif
 NINFER_W8_EXACT_LAUNCHER(launch_w8_exact_mma_r64_c128, launch_w8_mma_r64_c128, 128)
 NINFER_W8_EXACT_LAUNCHER(launch_w8_exact_mma_r96_c96, launch_w8_mma_r96_c96, 96)
 NINFER_W8_EXACT_LAUNCHER(launch_w8_exact_mma_r128_c80, launch_w8_mma_r128_c80, 80)

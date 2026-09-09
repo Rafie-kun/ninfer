@@ -721,11 +721,10 @@ void validate_target_options(DeviceContext& device, const EngineOptions& options
             throw std::invalid_argument(
                 "Ampere fork: --vision is not supported in this build (8-12GB residency)");
         }
-        if (options.speculative.backend == SpeculativeBackend::DFlash ||
-            options.speculative.backend == SpeculativeBackend::DFlash2) {
+        if (options.speculative.backend != SpeculativeBackend::None) {
             throw std::invalid_argument(
-                "Ampere fork: DFlash/DFlash2 speculative backends are not supported; use "
-                "--spec none (or mtp)");
+                "Ampere fork: speculative decoding is not supported in this build "
+                "(MTP needs stubbed W8 kernels, DFlash needs sm_120a); use --spec none");
         }
 #else
         throw std::invalid_argument("Qwen3.6 family runtime requires compute capability 12.0");
