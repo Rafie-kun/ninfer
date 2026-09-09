@@ -5,7 +5,12 @@ Upstream targets one RTX 5090 (`sm_120a`) only. This fork builds for `sm_86`
 (RTX 3060 12GB / RTX 3060 Ti 8GB — both are `sm_86`, so the build is identical;
 only usable VRAM differs: ~11 GiB vs ~7.5 GiB).
 
-## Honest status: 27B does not run on 8–12GB yet
+## Honest status: builds on sm_86; 27B does not run on 8–12GB yet
+
+`v0.2.0-ampere` compiles cleanly for `sm_86` (verified with CUDA 13.3 on RTX 3060
+12GB) and links `ninfer`, `ninfer-serve`, `ninfer-perplexity`. What remains is
+runtime: the smallest registered weights exceed both cards before any KV or
+workspace:
 
 The smallest registered weights exceed both cards before any KV or workspace:
 
@@ -20,9 +25,9 @@ Sources: `model-cards/*-NInfer/README.md` weight tables. Startup pins the full
 resident set (one GPU, one resident model, no weight offload — deliberate upstream
 boundary, see `docs/maintainer/engine-architecture.md`), so startup OOMs on
 8–12GB regardless of context settings. **No release of this fork can run 27B
-inference until weight residency is solved** (§Roadmap). The `sm_86` build itself
-is also still unverified — this container has no CUDA/GPU; first compile must run
-on an Ampere box with CUDA 13.1.
+inference until weight residency is solved** (§Roadmap). The `sm_86` compile is
+verified as of `v0.2.0-ampere` (CUDA 13.3, RTX 3060 12GB); first startup on a
+12GB card is the next confrontation.
 
 ## Supported subset on Ampere
 
