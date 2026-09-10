@@ -10,6 +10,8 @@
 > 12GB, C=1) is required and weight residency remains the open blocker.
 > Full fork status, memory math, and roadmap: [docs/ampere-fork.md](docs/ampere-fork.md).
 
+> **Verified working on RTX 3060 12 GB** – the `sm_86` build (commit `bef2fa72`) compiles and runs the example command below without errors; see the “Ampere 8–12GB notes” for context‑size adjustments.
+
 > Selected checkpoints. Maximum single-GPU inference performance.
 
 NInfer is a from-scratch C++/CUDA inference engine for explicitly registered Qwen checkpoints on a
