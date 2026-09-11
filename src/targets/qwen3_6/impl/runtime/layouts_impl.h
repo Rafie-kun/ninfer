@@ -715,7 +715,7 @@ void validate_target_options(DeviceContext& device, const EngineOptions& options
         if (options.kv_cache != KvCacheStorage::BFloat16 &&
             options.kv_cache != KvCacheStorage::Int8Group64) {
             throw std::invalid_argument(
-                "Ampere fork: kv-dtype must be bf16 or int8 (fp8/nvfp4/k8v4 need sm_120a)");
+                "Ampere fork: kv-dtype must be bf16 or int8 (fp8/nvfp4/k8v4 need sm_120a, not supported on sm_86)");
         }
         if (options.enable_vision) {
             throw std::invalid_argument(
