@@ -19,6 +19,7 @@
 #include "ninfer/ops/speculative_round.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <initializer_list>
 #include <limits>
 #include <stdexcept>
